@@ -1,0 +1,50 @@
+
+name: Extract OTClient archive
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/unpack-otclient.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract archive
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          archive = Path("otclientv8-OTAcademy-master.zip")
+          destination = Path("otclient-extracted").resolve()
+          destination.mkdir(parents=True, exist_ok=True)
+
+          with ZipFile(archive) as zf:
+              if zf.testzip():
+                  raise SystemExit("ZIP corrompido")
+              for item in zf.infolist():
+                  target = (destination / item.filename).resolve()
+                  if destination not in target.parents and target != destination:
+                      raise SystemExit("Caminho inseguro no ZIP")
+              zf.extractall(destination)
+
+          print("Extração concluída")
+          PY
+
+      - name: Upload extracted files
+        uses: actions/upload-artifact@v4
+        with:
+          name: otclient-extracted
+          path: otclient-extracted/
+          if-no-files-found: error
+          retention-days: 1
